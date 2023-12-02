@@ -20,6 +20,7 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewTreeObserver;
+import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ScrollView;
 import android.widget.TextView;
@@ -30,6 +31,9 @@ import android.widget.Toast;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.Locale;
 import java.util.UUID;
 
 public class MainActivity extends AppCompatActivity {
@@ -41,9 +45,11 @@ public class MainActivity extends AppCompatActivity {
     private TextView tvRecord;
 
     private ScrollView scrollView;
+    private Button timeButton;
 
     //private final ScrollView svResult = (ScrollView) findViewById(R.id.scrollView2);
 
+    @SuppressLint("MissingInflatedId")
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -54,6 +60,7 @@ public class MainActivity extends AppCompatActivity {
         scrollView=findViewById(R.id.scrollView2);
         //蓝牙设置
         btManager = BluetoothManager.getInstance();
+        timeButton = findViewById(R.id.button4);
         if (btManager.isConnected()) {
             setTitle("蓝牙连接到：" + btManager.getDeviceName());
         } else {
@@ -86,6 +93,22 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onClick(View view) {
                 startActivity(new Intent(MainActivity.this,MainActivity2.class));
+            }
+        });
+        //授时按钮
+        timeButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                // 获取当前系统时间
+                Date currentTime = new Date();
+                // 定义日期时间格式
+                SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault());
+                // 格式化日期时间并加上大写'R'
+                String formattedTime = dateFormat.format(currentTime) + "R";
+                // 打印或使用格式化后的时间
+                Log.d("Formatted Time", formattedTime);
+                //发送数据到蓝牙串口
+                btManager.send(formattedTime);
             }
         });
     }
