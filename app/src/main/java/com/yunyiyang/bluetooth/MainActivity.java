@@ -10,31 +10,23 @@ import androidx.appcompat.app.AppCompatActivity;
 
 import android.Manifest;
 import android.annotation.SuppressLint;
-import android.bluetooth.BluetoothAdapter;
-import android.bluetooth.BluetoothDevice;
-import android.bluetooth.BluetoothSocket;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
-import android.view.ViewTreeObserver;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
 
-
-
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Locale;
-import java.util.UUID;
+
 
 public class MainActivity extends AppCompatActivity {
 
@@ -45,22 +37,25 @@ public class MainActivity extends AppCompatActivity {
     private TextView tvRecord;
 
     private ScrollView scrollView;
-    private Button timeButton;
+    private static final int BLUETOOTH_PERMISSION_REQUEST_CODE = 1;
+    private static final int LOCATION_PERMISSION_REQUEST_CODE = 2;
+    private boolean bluetoothPermissionDenied = false;//记录蓝牙授权有没有被用户拒绝
+    private boolean locationPermissionDenied = false;//记录位置授权有没有被用户拒绝
 
-    //private final ScrollView svResult = (ScrollView) findViewById(R.id.scrollView2);
 
     @SuppressLint("MissingInflatedId")
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        // 检查蓝牙和位置权限
+        checkBluetoothPermissions();
+        checkLocationPermissions();
         //关联
         etMsg = findViewById(R.id.editTextTextPersonName);
         tvRecord = findViewById(R.id.textView);
         scrollView=findViewById(R.id.scrollView2);
-        //蓝牙设置
-        btManager = BluetoothManager.getInstance();
-        timeButton = findViewById(R.id.button4);
+        Button timeButton = findViewById(R.id.button4);
         if (btManager.isConnected()) {
             setTitle("蓝牙连接到：" + btManager.getDeviceName());
         } else {
@@ -112,6 +107,80 @@ public class MainActivity extends AppCompatActivity {
             }
         });
     }
+    private void checkBluetoothPermissions() {
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
+            // 检查蓝牙权限是否已授予
+            if (checkSelfPermission(Manifest.permission.BLUETOOTH) != PackageManager.PERMISSION_GRANTED ||
+                    checkSelfPermission(Manifest.permission.BLUETOOTH_SCAN) != PackageManager.PERMISSION_GRANTED ||
+                    checkSelfPermission(Manifest.permission.BLUETOOTH_ADMIN) != PackageManager.PERMISSION_GRANTED ||
+                    checkSelfPermission(Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
+
+                // 请求蓝牙权限
+                requestPermissions(new String[]{
+                        Manifest.permission.BLUETOOTH,
+                        Manifest.permission.BLUETOOTH_SCAN,
+                        Manifest.permission.BLUETOOTH_ADMIN,
+                        Manifest.permission.BLUETOOTH_CONNECT
+                }, BLUETOOTH_PERMISSION_REQUEST_CODE);
+            } else {
+                // 蓝牙权限已授予，继续进行蓝牙操作
+                initializeBluetooth();
+            }
+        } else {
+            // 在低于Android 6.0的设备上不需要运行时权限
+            initializeBluetooth();
+        }
+    }
+
+    private void checkLocationPermissions() {
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
+            // 检查位置权限是否已授予
+            if (checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED ||
+                    checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+
+                // 请求位置权限
+                requestPermissions(new String[]{
+                        Manifest.permission.ACCESS_FINE_LOCATION,
+                        Manifest.permission.ACCESS_COARSE_LOCATION
+                }, LOCATION_PERMISSION_REQUEST_CODE);
+            } else {
+                // 位置权限已授予，可以执行与位置相关的操作
+            }
+        } else {
+            // 在低于Android 6.0的设备上不需要运行时权限
+        }
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions,
+                                           @NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+
+        if (requestCode == BLUETOOTH_PERMISSION_REQUEST_CODE) {
+            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                // 蓝牙权限已授予，继续进行蓝牙操作
+                initializeBluetooth();
+            } else {
+                // 蓝牙权限被拒绝，记录状态
+                bluetoothPermissionDenied = true;
+                Toast.makeText(this, "蓝牙权限被拒绝", Toast.LENGTH_SHORT).show();
+            }
+        } else if (requestCode == LOCATION_PERMISSION_REQUEST_CODE) {
+            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                // 位置权限已授予，可以执行与位置相关的操作
+            } else {
+                // 位置权限被拒绝，记录状态
+                locationPermissionDenied = true;
+                // 位置权限被拒绝，根据需要进行处理
+                Toast.makeText(this, "位置权限被拒绝", Toast.LENGTH_SHORT).show();
+            }
+        }
+    }
+
+    private void initializeBluetooth(){
+        //蓝牙设置
+        btManager = BluetoothManager.getInstance();
+    }
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
@@ -154,6 +223,17 @@ public class MainActivity extends AppCompatActivity {
         }
         return super.onOptionsItemSelected(item);
     }
+    @Override
+    protected void onResume() {
+        super.onResume();
 
+        // 在 onResume 中检查是否有权限被拒绝，如果有，重新请求权限
+        if (bluetoothPermissionDenied || locationPermissionDenied) {
+            checkBluetoothPermissions();
+            checkLocationPermissions();
+            bluetoothPermissionDenied = false;
+            locationPermissionDenied = false;
+        }
+    }
 
 }
