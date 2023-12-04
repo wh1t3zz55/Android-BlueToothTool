@@ -70,6 +70,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:background="#DEDDDD"
+            android:textColor="@color/black"
             android:gravity="bottom" />
     </ScrollView>
 </androidx.constraintlayout.widget.ConstraintLayout>
