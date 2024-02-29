@@ -240,7 +240,21 @@ public class MainActivity extends AppCompatActivity {
     public boolean onOptionsItemSelected(@NonNull MenuItem item) {
         int itemId = item.getItemId();
         if (itemId == R.id.item_conn) {
-            launcher.launch(new Intent(MainActivity.this, BluetoothList.class));
+            if (checkSelfPermission(Manifest.permission.BLUETOOTH) != PackageManager.PERMISSION_GRANTED ||
+                    checkSelfPermission(Manifest.permission.BLUETOOTH_SCAN) != PackageManager.PERMISSION_GRANTED ||
+                    checkSelfPermission(Manifest.permission.BLUETOOTH_ADMIN) != PackageManager.PERMISSION_GRANTED ||
+                    checkSelfPermission(Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
+
+                // 请求蓝牙权限
+                requestPermissions(new String[]{
+                        Manifest.permission.BLUETOOTH,
+                        Manifest.permission.BLUETOOTH_SCAN,
+                        Manifest.permission.BLUETOOTH_ADMIN,
+                        Manifest.permission.BLUETOOTH_CONNECT
+                }, BLUETOOTH_PERMISSION_REQUEST_CODE);
+            }else {
+                launcher.launch(new Intent(MainActivity.this, BluetoothList.class));
+            }
         } else if (itemId == R.id.item_disconn) {
             btManager.disconnect();
             Toast.makeText(getBaseContext(), "蓝牙已断开", Toast.LENGTH_SHORT).show();
